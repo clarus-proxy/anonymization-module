@@ -7,6 +7,7 @@ import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
+
 import javax.crypto.Cipher;
 import javax.crypto.KeyGenerator;
 import javax.crypto.SecretKey;
@@ -23,7 +24,19 @@ public class SymmetricCrypto {
     public static byte[] encrypt(byte[] text, String key)
             throws FileNotFoundException, IOException, ClassNotFoundException {
         ObjectInputStream keyStream = new ObjectInputStream(new FileInputStream(key));
-        final SecretKey publicKey = (SecretKey) keyStream.readObject(); //la key no ha de canviar per a res, aixi que la definim com a final
+        final SecretKey publicKey = (SecretKey) keyStream.readObject(); // la
+                                                                        // key
+                                                                        // no ha
+                                                                        // de
+                                                                        // canviar
+                                                                        // per a
+                                                                        // res,
+                                                                        // aixi
+                                                                        // que
+                                                                        // la
+                                                                        // definim
+                                                                        // com a
+                                                                        // final
         keyStream.close();
         return encrypt(text, publicKey);
     }

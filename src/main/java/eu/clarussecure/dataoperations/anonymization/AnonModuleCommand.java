@@ -1,9 +1,9 @@
 package eu.clarussecure.dataoperations.anonymization;
 
-import eu.clarussecure.dataoperations.DataOperationCommand;
-
 import java.util.HashMap;
 import java.util.Random;
+
+import eu.clarussecure.dataoperations.DataOperationCommand;
 
 /**
  * Created by Alberto Blanco on 25/01/2017.

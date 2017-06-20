@@ -5,6 +5,7 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Calendar;
 import java.util.HashMap;
+import java.util.regex.Pattern;
 
 public class Record {
     static String attributeSeparator;
@@ -18,10 +19,22 @@ public class Record {
     static int clouds;
     static String idKey;
     static String coarsening_type;
-    //AKKA fix: radius value depends on SRID. it could be a real
-    //static int radius;
+    // AKKA fix: radius value depends on SRID. it could be a real
+    // static int radius;
     static double radius;
+    // AKKA fix: keep original numAttr, listNames, listAttrTypes and
+    // listDataTypes as reference
+    static int refNumAttr;
+    static ArrayList<String> refListNames;
+    static ArrayList<Pattern> refListNamePatterns;
+    static ArrayList<String> refListAttrTypes;
+    static ArrayList<String> refListDataTypes;
+    // numAttr, listNames, listNamePatterns, listAttrTypes and listDataTypes are
+    // resolved for each data operation according to the original refNumAttr,
+    // refListNames, refListAttrTypes and refListDataTypes
     static ArrayList<String> listNames;
+    // AKKA fix: attribute matching done with patterns
+    static ArrayList<Pattern> listNamePatterns;
     static ArrayList<String> listAttrTypes;
     static ArrayList<String> listDataTypes;
     String attrValues[];
@@ -32,7 +45,7 @@ public class Record {
         this.id = id;
     }
 
-    public Record(int id, int numAttr) { //per num attr diferent
+    public Record(int id, int numAttr) { // per num attr diferent
         this.attrValues = new String[numAttr];
         this.id = id;
     }
@@ -50,7 +63,8 @@ public class Record {
             attrType = listAttrTypes.get(i);
             if (attrType.equalsIgnoreCase(Constants.quasiIdentifier)) {
                 dataType = Record.listDataTypes.get(i);
-                if (dataType.equalsIgnoreCase(Constants.date)) { //fechas a epoch time
+                if (dataType.equalsIgnoreCase(Constants.date)) { // fechas a
+                                                                     // epoch time
                     value = this.attrValues[i];
                     try {
                         calendar.setTime(format1.parse(value));
@@ -58,7 +72,7 @@ public class Record {
                         e.printStackTrace();
                     }
                     recordQ.attrValues[pos] = String.valueOf(calendar.getTimeInMillis());
-                } else { //resto igual
+                } else { // resto igual
                     recordQ.attrValues[pos] = this.attrValues[i];
                 }
                 pos++;
@@ -80,7 +94,8 @@ public class Record {
             attrType = listAttrTypes.get(i);
             if (attrType.equalsIgnoreCase(Constants.quasiIdentifier)) {
                 dataType = Record.listDataTypes.get(i);
-                if (dataType.equalsIgnoreCase(Constants.date)) { //fechas a epoch time
+                if (dataType.equalsIgnoreCase(Constants.date)) { // fechas a
+                                                                     // epoch time
                     value = this.attrValues[i];
                     try {
                         calendar.setTime(format1.parse(value));
@@ -88,7 +103,7 @@ public class Record {
                         e.printStackTrace();
                     }
                     recordQ.attrValues[pos] = String.valueOf(calendar.getTimeInMillis());
-                } else { //resto igual
+                } else { // resto igual
                     recordQ.attrValues[pos] = this.attrValues[i];
                 }
                 pos++;
@@ -106,6 +121,7 @@ public class Record {
         return recordQ;
     }
 
+    @Override
     public Record clone() {
         Record record;
 
@@ -116,6 +132,7 @@ public class Record {
         return record;
     }
 
+    @Override
     public String toString() {
         String str;
         str = "";

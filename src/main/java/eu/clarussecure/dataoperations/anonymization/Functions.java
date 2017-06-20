@@ -9,14 +9,19 @@ import java.io.StringReader;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Random;
 import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
 import javax.xml.parsers.ParserConfigurationException;
 
 import org.geotools.geometry.jts.GeometryBuilder;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.w3c.dom.Document;
 import org.w3c.dom.NamedNodeMap;
 import org.w3c.dom.Node;
@@ -31,8 +36,15 @@ import com.vividsolutions.jts.geom.PrecisionModel;
 import com.vividsolutions.jts.io.ParseException;
 import com.vividsolutions.jts.io.WKBReader;
 import com.vividsolutions.jts.io.WKBWriter;
+import com.vividsolutions.jts.io.WKTReader;
+import com.vividsolutions.jts.io.WKTWriter;
+
+import eu.clarussecure.dataoperations.AttributeNamesUtilities;
 
 public class Functions {
+
+    // AKKA fix: log
+    private static final Logger LOGGER = LoggerFactory.getLogger(Functions.class);
 
     public static String[][] anonymize(String[] attributes, String[][] content) {
         String[][] dataAnom = null;
@@ -67,6 +79,8 @@ public class Functions {
 
     private static void reOrderListsAccordingAttributeParameter(String[] attributes) {
         ArrayList<String> newListNames = new ArrayList<String>();
+        // AKKA fix: use pattern for attribute matching
+        ArrayList<Pattern> newListNamePatterns = new ArrayList<Pattern>();
         ArrayList<String> newListAttrTypes = new ArrayList<String>();
         ArrayList<String> newListDataTypes = new ArrayList<String>();
         String attr, name;
@@ -75,18 +89,25 @@ public class Functions {
         for (int i = 0; i < attributes.length; i++) {
             attr = attributes[i];
             ok = false;
-            for (int j = 0; j < Record.listNames.size(); j++) {
-                name = Record.listNames.get(j);
-                if (attr.equals(name)) {
+            // AKKA fix: take refListNames as reference
+            for (int j = 0; j < Record.refListNames.size(); j++) {
+                name = Record.refListNames.get(j);
+                // use pattern for attribute matching
+                Pattern pattern = Record.refListNamePatterns.get(j);
+                if (pattern.matcher(attr).matches()) {
                     newListNames.add(name);
-                    newListAttrTypes.add(Record.listAttrTypes.get(j));
-                    newListDataTypes.add(Record.listDataTypes.get(j));
+                    newListNamePatterns.add(Record.refListNamePatterns.get(j));
+                    newListAttrTypes.add(Record.refListAttrTypes.get(j));
+                    newListDataTypes.add(Record.refListDataTypes.get(j));
                     ok = true;
                     break;
                 }
             }
-            if (!ok) { //this attribute does not appear in the security policy
-                newListNames.add(attr); //it is added as categorical non_confidential
+            if (!ok) { // this attribute does not appear in the security policy
+                newListNames.add(attr); // it is added as categorical
+                                        // non_confidential
+                                        // AKKA fix: use pattern for attribute matching
+                newListNamePatterns.add(Pattern.compile(AttributeNamesUtilities.escapeRegex(attr)));
                 newListAttrTypes.add(Constants.non_confidential);
                 newListDataTypes.add(Constants.categoric);
             }
@@ -99,10 +120,12 @@ public class Functions {
     }
 
     /**
-     * This function applies k-anonymization to a dataset 
-     * 
-     * @param dataOri, the dataset
-     * @param k, the desired k level
+     * This function applies k-anonymization to a dataset
+     *
+     * @param dataOri,
+     *            the dataset
+     * @param k,
+     *            the desired k level
      * @return the anonymized version of the dataset that fullfils k-anonymity
      */
 
@@ -127,7 +150,8 @@ public class Functions {
         Record record;
         String attrType;
 
-        System.out.println("Anonymizing kAnonymity k = " + k + "...");
+        // AKKA fix: log
+        LOGGER.trace("Anonymizing kAnonymity k = {}...", k);
 
         RecordQ.numAttr = Record.numQuasi;
         RecordQ.listAttrTypes = new ArrayList<String>();
@@ -139,16 +163,18 @@ public class Functions {
                 RecordQ.listDataTypes.add(Record.listDataTypes.get(i));
             }
         }
-        for (Record reg : dataOri) { //create records with quasi-identifiers
+        for (Record reg : dataOri) { // create records with quasi-identifiers
             dataQuasis.add(reg.toRecordQ());
         }
 
         Distances.calculateTypicalDeviationsNumeric(dataQuasis);
-        System.out.print("Sorting by quasi-identifiers...");
+        // AKKA fix: log
+        LOGGER.debug("Sorting by quasi-identifiers done");
         Functions.sortByQuasi(dataQuasis);
         System.out.println("done");
 
-        System.out.print("Anonymizing...");
+        // AKKA fix: log
+        LOGGER.trace("Anonymizing...");
 
         cluster = new Cluster();
         numReg = dataQuasis.size();
@@ -183,27 +209,37 @@ public class Functions {
             pos++;
         }
 
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Anonymizing done...");
 
-        System.out.print("Rearranging...");
+        // AKKA fix: log
+        LOGGER.trace("Rearranging...");
         Collections.sort(dataQuasis, new ComparatorID());
-        for (int i = 0; i < dataQuasis.size(); i++) { //anonymize original data
+        for (int i = 0; i < dataQuasis.size(); i++) { // anonymize original data
             recordQ = dataQuasis.get(i);
             record = dataOri.get(i).clone();
             dataAnom.add(recordQ.toRecord(record));
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Rearranging done...");
+
+        // AKKA fix: log
+        LOGGER.debug("Anonymizing done (kAnonymity k = {})", k);
 
         return dataAnom;
     }
 
     /**
      * This function applies k-anonymization + t-closeness to a dataset
-     * 
-     * @param dataOri, the dataset
-     * @param k, the desired k level
-     * @param t, the desired t closeness
-     * @return the anonymized version of the dataset that fullfils k-anonymity and t-closeness
+     *
+     * @param dataOri,
+     *            the dataset
+     * @param k,
+     *            the desired k level
+     * @param t,
+     *            the desired t closeness
+     * @return the anonymized version of the dataset that fullfils k-anonymity
+     *         and t-closeness
      */
 
     public static String[][] kAnonymize_tCloseness(String[][] dataOri, int k, double t) {
@@ -232,7 +268,8 @@ public class Functions {
         RecordQ recordQ;
         String attrType;
 
-        System.out.println("Anonymizing kAnonymity / tCloseness k = " + k + " / t = " + t);
+        // AKKA fix: log
+        LOGGER.trace("Anonymizing kAnonymity / tCloseness k = {} / t = {}...", k, t);
 
         RecordQ.numAttr = Record.numQuasi + 1;
         RecordQ.listAttrTypes = new ArrayList<String>();
@@ -251,15 +288,18 @@ public class Functions {
                 RecordQ.listDataTypes.add(Record.listDataTypes.get(i));
             }
         }
-        for (Record reg : dataOri) { //crea records con solo los quasi + 1 sensible
+        for (Record reg : dataOri) { // crea records con solo los quasi + 1
+                                         // sensible
             dataQuasis.add(reg.toRecordQConfidential());
         }
 
         Distances.calculateTypicalDeviationsNumericWithConfidential(dataQuasis);
-        System.out.print("Sorting by confidential attribute...");
+        // AKKA fix: log
+        LOGGER.trace("Sorting by confidential attribute...");
         attrSensitive = dataQuasis.get(0).attrValues.length - 1;
         Functions.sortBySensitive(dataQuasis, attrSensitive);
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Sorting by confidential attribute done");
 
         n = dataQuasis.size();
         kPrime = n / (2 * (n - 1) * t + 1);
@@ -275,7 +315,8 @@ public class Functions {
             numClustersK = numClustersK + (remainder / numItem);
         }
 
-        System.out.print("Creating k subsets(" + numClustersK + ")...");
+        // AKKA fix: log
+        LOGGER.trace("Creating k subsets({})...", numClustersK);
         index = 0;
         for (int i = 0; i < numClustersK; i++) {
             clusterTemp = new Cluster();
@@ -287,7 +328,7 @@ public class Functions {
             clustersK.add(clusterTemp);
         }
 
-        if (index < dataQuasis.size()) { //remain records in a cluster
+        if (index < dataQuasis.size()) { // remain records in a cluster
             clusterTemp = new Cluster();
             for (int i = index; i < dataQuasis.size(); i++) {
                 r = dataQuasis.get(i);
@@ -295,15 +336,19 @@ public class Functions {
             }
             clustersK.add(clusterTemp);
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Creating k subsets({}) done", numClustersK);
 
-        System.out.print("Sorting by quasi-identifier attributes each subset...");
+        // AKKA fix: log
+        LOGGER.trace("Sorting by quasi-identifier attributes each subset...");
         for (Cluster cluster : clustersK) {
             Functions.sortByQuasi(cluster.getElements());
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Sorting by quasi-identifier attributes each subset done");
 
-        System.out.print("Creating clusters...");
+        // AKKA fix: log
+        LOGGER.trace("Creating clusters...");
         remain = dataQuasis.size();
         dataQuasis.clear();
         index = 0;
@@ -311,16 +356,22 @@ public class Functions {
             clusterTemp = new Cluster();
             for (Cluster cluster : clustersK) {
                 if (cluster.getElements().size() > index) {
-                    clusterTemp.add(cluster.getElements().get(index)); //the next record is added
+                    clusterTemp.add(cluster.getElements().get(index)); // the
+                                                                       // next
+                                                                       // record
+                                                                       // is
+                                                                       // added
                     remain--;
                 }
             }
             index++;
             clusters.add(clusterTemp);
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Creating clusters done");
 
-        System.out.print("Anonymizing...");
+        // AKKA fix: log
+        LOGGER.trace("Anonymizing...");
         numAttrQuasi = clusters.get(0).getElements().get(0).attrValues.length - 1;
         for (Cluster cluster : clusters) {
             cluster.calculateCentroid();
@@ -331,29 +382,35 @@ public class Functions {
                 dataQuasis.add(reg);
             }
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Anonymizing done");
 
-        System.out.print("ReArranging...");
+        // AKKA fix: log
+        LOGGER.trace("ReArranging...");
         Collections.sort(dataQuasis, new ComparatorID());
         for (int i = 0; i < dataQuasis.size(); i++) {
             recordQ = dataQuasis.get(i);
             dataAnom.add(recordQ.toRecord(dataOri.get(i)));
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("ReArranging done");
+
+        // AKKA fix: log
+        LOGGER.debug("Anonymizing done (kAnonymity / tCloseness k = {} / t = {})", k, t);
 
         return dataAnom;
     }
 
     /**
-     * This function applies coarsening shift to a dataset 
-     * 
-     * @param dataOri, the dataset
-     * @param radius, the desired level of privacy (radius of circle)
+     * This function applies coarsening shift to a dataset
+     *
+     * @param dataOri,
+     *            the dataset
+     * @param radius,
+     *            the desired level of privacy (radius of circle)
      * @return the anonymized version of the dataset that fullfils k-anonymity
      */
 
-    //AKKA fix: radius value depends on SRID. it could be a real
-    //public static String[][] coarseningShift(String[][] dataOri, int radius){
     public static String[][] coarseningShift(String[][] dataOri, double radius) {
         ArrayList<Record> data;
         ArrayList<Record> dataAnom;
@@ -366,25 +423,33 @@ public class Functions {
         return dataAnomStr;
     }
 
-    //AKKA fix: radius value depends on SRID. it could be a real
-    //public static ArrayList<Record> coarseningShift(ArrayList<Record>dataOri, int radius){
     public static ArrayList<Record> coarseningShift(ArrayList<Record> dataOri, double radius) {
         ArrayList<Record> dataAnom = new ArrayList<Record>();
         ArrayList<String> geometricObjects = new ArrayList<String>();
         ArrayList<String> geometricObjectsAnom = new ArrayList<String>();
         int posGeom;
         String attrType, dataType, geomStr;
-        Geometry geom; //Objecte geometric basic
-        WKBReader reader = new WKBReader(); //Parseja objectes en format WKB (Well Known Binary)
-        WKBWriter writer = new WKBWriter(2, true); //Converteix objectes de GeoTools
+        Geometry geom; // Objecte geometric basic
+        // AKKA fix: use WKT
+        WKBReader wkbReader = new WKBReader(); // Parseja objectes en format WKB
+                                               // (Well Known Binary)
+        WKBWriter wkbWriter = new WKBWriter(2, true); // Converteix objectes de
+                                                      // GeoTools
+        WKTReader wktReader = new WKTReader(); // Parseja objectes en format WKT
+                                               // (Well Known Text)
+        WKTWriter wktWriter = new WKTWriter(2); // Converteix objectes de
+                                                // GeoTools en format WKT (Well
+                                                // Known Text)
         Geometry cir;
         double x, y;
         Circle circle;
         Record record, recordAnom;
 
-        System.out.println("Coarsening radius = " + radius + "...");
+        // AKKA fix: log
+        LOGGER.trace("Coarsening radius = {}...", radius);
         posGeom = 0;
-        for (int i = 0; i < Record.numAttr; i++) { //posicio del geometric_object
+        for (int i = 0; i < Record.numAttr; i++) { // posicio del
+                                                       // geometric_object
             attrType = Record.listAttrTypes.get(i);
             if (attrType.equalsIgnoreCase(Constants.identifier)) {
                 dataType = Record.listDataTypes.get(i);
@@ -399,21 +464,51 @@ public class Functions {
             geomStr = reg.attrValues[posGeom];
             geometricObjects.add(geomStr);
         }
-        for (String s : geometricObjects) { //extreu i converteix coordenada a cercle
+        for (String s : geometricObjects) { // extreu i converteix coordenada a
+                                                // cercle
+
+            // AKKA fix: first, try to read geom in WKT format, the nin WKB
+            boolean wktFormat = true;
+            boolean withSRID = false;
+            geom = null;
             try {
-                geom = reader.read(WKBReader.hexToBytes(s));
+                int srid = 0;
+                String wkt = s;
+                withSRID = wkt.startsWith("SRID");
+                if (withSRID) {
+                    int begin = wkt.indexOf('=') + 1;
+                    int end = wkt.indexOf(';', begin);
+                    srid = Integer.parseInt(wkt.substring(begin, end));
+                    wkt = wkt.substring(end + 1);
+                }
+                geom = wktReader.read(wkt);
+                geom.setSRID(srid);
+            } catch (ParseException e) {
+                wktFormat = false;
+                try {
+                    geom = wkbReader.read(WKBReader.hexToBytes(s));
+                } catch (ParseException e2) {
+                    e.printStackTrace();
+                }
+            }
+            if (geom != null) {
                 x = geom.getCoordinate().x;
                 y = geom.getCoordinate().y;
                 circle = shift(x, y, radius);
-                //AKKA fix: radius unit and value depends on SRID. Don't convert it
+                // radius unit and value depends on SRID.
                 cir = create3DCircle(circle.centre.latitude, circle.centre.longitude, radius);
-                //AKKA fix: SRID of Polygon must be the same than SRID of original Point
-                ////AKKA fix: inverse latitude and longitude
-                ////cir.setSRID(calculateSrid(circle.centre.latitude, circle.centre.longitude, 4326));
+                // preserve SRID
                 cir.setSRID(geom.getSRID());
-                geometricObjectsAnom.add(WKBWriter.toHex(writer.write(cir)));
-            } catch (ParseException e) {
-                e.printStackTrace();
+                // write geom in same format (WKT or WKB)
+                if (wktFormat) {
+                    s = wktWriter.write(cir);
+                    if (withSRID) {
+                        s = "SRID=" + cir.getSRID() + ";" + s;
+                    }
+                } else {
+                    s = WKBWriter.toHex(wkbWriter.write(cir));
+                }
+                geometricObjectsAnom.add(s);
             }
         }
         for (int i = 0; i < dataOri.size(); i++) {
@@ -422,16 +517,19 @@ public class Functions {
             recordAnom.attrValues[posGeom] = geometricObjectsAnom.get(i);
             dataAnom.add(recordAnom);
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Coarsening done (radius = {})", radius);
 
         return dataAnom;
     }
 
     /**
-     * This function applies coarsening microaggregation to a dataset 
-     * 
-     * @param dataOri, the dataset
-     * @param k, the desired level of privacy
+     * This function applies coarsening microaggregation to a dataset
+     *
+     * @param dataOri,
+     *            the dataset
+     * @param k,
+     *            the desired level of privacy
      * @return the anonymized version of the dataset that fullfils k-anonymity
      */
 
@@ -459,17 +557,27 @@ public class Functions {
         Circle circle;
         int posGeom;
         String attrType, dataType, geomStr;
-        Geometry geom; //Objecte geometric basic
-        WKBReader reader = new WKBReader(); //Parseja objectes en format WKB (Well Known Binary)
-        WKBWriter writer = new WKBWriter(2, true); //Converteix objectes de GeoTools
+        Geometry geom; // Objecte geometric basic
+        // AKKA fix: use WKT
+        WKBReader wkbReader = new WKBReader(); // Parseja objectes en format WKB
+                                               // (Well Known Binary)
+        WKBWriter wkbWriter = new WKBWriter(2, true); // Converteix objectes de
+                                                      // GeoTools
+        WKTReader wktReader = new WKTReader(); // Parseja objectes en format WKT
+                                               // (Well Known Text)
+        WKTWriter wktWriter = new WKTWriter(2); // Converteix objectes de
+                                                // GeoTools en format WKT (Well
+                                                // Known Text)
         Geometry cir;
         double x, y;
         Record record, recordAnom;
 
-        System.out.println("Coarsening microaggregation k = " + k + "...");
+        // AKKA fix: log
+        LOGGER.trace("Coarsening microaggregation k = {}...", k);
 
         posGeom = 0;
-        for (int i = 0; i < Record.numAttr; i++) { //posicio del geometric_object
+        for (int i = 0; i < Record.numAttr; i++) { // posicio del
+                                                       // geometric_object
             attrType = Record.listAttrTypes.get(i);
             if (attrType.equalsIgnoreCase(Constants.identifier)) {
                 dataType = Record.listDataTypes.get(i);
@@ -479,18 +587,37 @@ public class Functions {
                 }
             }
         }
+        // AKKA fix: first, try to read geom in WKT format, the nin WKB format
+        boolean wktFormat = true;
+        boolean withSRID = false;
         for (Record reg : dataOri) {
+            geomStr = reg.attrValues[posGeom];
+            geom = null;
             try {
-                geomStr = reg.attrValues[posGeom];
-                geom = reader.read(WKBReader.hexToBytes(geomStr));
+                int srid = 0;
+                String wkt = geomStr;
+                withSRID = wkt.startsWith("SRID");
+                if (withSRID) {
+                    int begin = wkt.indexOf('=') + 1;
+                    int end = wkt.indexOf(';', begin);
+                    srid = Integer.parseInt(wkt.substring(begin, end));
+                    wkt = wkt.substring(end + 1);
+                }
+                geom = wktReader.read(wkt);
+                geom.setSRID(srid);
+            } catch (ParseException e) {
+                wktFormat = false;
+                try {
+                    geom = wkbReader.read(WKBReader.hexToBytes(geomStr));
+                } catch (ParseException e2) {
+                    e.printStackTrace();
+                }
+            }
+            if (geom != null) {
                 x = geom.getCoordinate().x;
                 y = geom.getCoordinate().y;
-                //AKKA fix: inverse latitude and longitude
-                //Moreover, save SRID of original Point
-                //pointsAnom.add(new CoordinateS(x, y, reg.id));
+                // preserve SRID
                 pointsAnom.add(new CoordinateS(y, x, reg.id, geom.getSRID()));
-            } catch (ParseException e) {
-                e.printStackTrace();
             }
         }
 
@@ -509,20 +636,24 @@ public class Functions {
             }
             clusters.add(cluster);
         }
-        for (CoordinateS p : pointsAnom) { //remaining points to its closest cluster
+        for (CoordinateS p : pointsAnom) { // remaining points to its closest
+                                               // cluster
             cluster = calculateClosestCluster(p, clusters);
             cluster.add(p);
             cluster.calculateCentroid();
         }
-        for (ClusterPoints c : clusters) { //calculates radius circle (max distance to centroid) 
+        for (ClusterPoints c : clusters) { // calculates radius circle (max
+                                               // distance to centroid)
             centroid = c.getCentroid();
             farthest = calculateFarthestPoint(centroid, c.getPoints());
-            //AKKA fix: centroid.distanceSq returns square of distance, so take the square root
+            // AKKA fix: centroid.distanceSq returns square of distance, so take
+            // the square root
             distance = Math.sqrt(centroid.distanceSq(farthest));
-            for (CoordinateS coo : c.getPoints()) { //each point of cluster has the same coordinates
+            for (CoordinateS coo : c.getPoints()) { // each point of cluster has
+                                                        // the same coordinates
                 circle = new Circle(centroid, distance);
                 circle.centre.id = coo.id;
-                //AKKA fix: save SRID of original Point
+                // AKKA fix: save SRID of original Point
                 circle.centre.srid = coo.srid;
                 circles.add(circle);
             }
@@ -530,14 +661,26 @@ public class Functions {
         Collections.sort(circles, new ComparatorIdCircles());
 
         for (Circle c : circles) {
-            //AKKA fix: radius unit depends on SRID. Don't convert it
-            //cir = create3DCircle(c.centre.latitude, c.centre.longitude, (c.radius/1852));
+            // AKKA fix: radius unit depends on SRID. Don't convert it
+            // cir = create3DCircle(c.centre.latitude, c.centre.longitude,
+            // (c.radius/1852));
             cir = create3DCircle(c.centre.latitude, c.centre.longitude, c.radius);
-            //AKKA fix: SRID of Polygon must be the same than SRID of original Point
-            ////AKKA fix: inverse latitude and longitude
-            ////cir.setSRID(calculateSrid(c.centre.latitude, c.centre.longitude, 4326));
+            // AKKA fix: SRID of Polygon must be the same than SRID of original
+            // Point
+            //// AKKA fix: inverse latitude and longitude
+            //// cir.setSRID(calculateSrid(c.centre.latitude,
+            // c.centre.longitude, 4326));
             cir.setSRID(c.centre.srid);
-            geometricObjectsAnom.add(WKBWriter.toHex(writer.write(cir)));
+            // AKKA fix: write geom in same format (WKT or WKB)
+            if (wktFormat) {
+                geomStr = wktWriter.write(cir);
+                if (withSRID) {
+                    geomStr = "SRID=" + cir.getSRID() + ";" + geomStr;
+                }
+            } else {
+                geomStr = WKBWriter.toHex(wkbWriter.write(cir));
+            }
+            geometricObjectsAnom.add(geomStr);
         }
 
         for (int i = 0; i < dataOri.size(); i++) {
@@ -546,7 +689,8 @@ public class Functions {
             recordAnom.attrValues[posGeom] = geometricObjectsAnom.get(i);
             dataAnom.add(recordAnom);
         }
-        System.out.println("done");
+        // AKKA fix: log
+        LOGGER.debug("Coarsening microaggregation done (k = {})", k);
 
         return dataAnom;
     }
@@ -642,64 +786,59 @@ public class Functions {
         else
             pref = 32700;
 
-        zone = ((int) ((x + 180) / 6)) + 1; //Casting a double to int behaves as we want (Drops the decimals)
+        zone = ((int) ((x + 180) / 6)) + 1; // Casting a double to int behaves
+                                            // as we want (Drops the decimals)
 
         return zone + pref;
     }
 
-    //AKKA fix: inverse latitude and longitude
-    //private static Geometry create3DCircle(double lng, double lat, double radiusNm) { 
+    // AKKA fix: inverse latitude and longitude
+    // private static Geometry create3DCircle(double lng, double lat, double
+    // radiusNm) {
     private static Geometry create3DCircle(double lat, double lng, double radius) {
-        PrecisionModel pmodel = new PrecisionModel(); //No podem especificar un SRID al GeometryFactory sense passarli un PrecisionModel
-        //AKKA fix: don't need SRID here 
-        //GeometryFactory builder = new GeometryFactory(pmodel, 4326); //GeometryFactory crea objectes geometrics de gis
-        GeometryFactory builder = new GeometryFactory(pmodel); //GeometryFactory crea objectes geometrics de gis
-        //AKKA fix: use GeometryBuilder.circle() to create the polygon
-        //        GeodeticCalculator calc = new GeodeticCalculator(DefaultEllipsoid.WGS84); 
-        //        calc.setStartingGeographicPoint(lng, lat); 
-        //        final int SIDES = 32 + 16 * ((int)Math.ceil(radiusNm / 40) / 5);       // Fairly random. 
-        //
-        //        double distance = radiusNm * 1852      /*1855.3248*/;              // Convert to metres.	
-        //        double baseAzimuth = 360.0 / SIDES; 
-        //        Coordinate coords[] = new Coordinate[SIDES+1]; 
-        //        for( int i = 0; i < SIDES; i++){ 
-        //                double azimuth = 180 - (i * baseAzimuth); 
-        //                calc.setDirection(azimuth, distance); 
-        //                Point2D point = calc.getDestinationGeographicPoint(); 
-        //                coords[i] = new Coordinate(point.getX(), point.getY()); 
-        //        } 
-        //        coords[SIDES] = coords[0]; 
-        //
-        //        LinearRing ring = builder.createLinearRing( coords ); 
-        //        Polygon polygon = builder.createPolygon( ring, null ); 
+        PrecisionModel pmodel = new PrecisionModel(); // No podem especificar un
+                                                      // SRID al GeometryFactory
+                                                      // sense passarli un
+                                                      // PrecisionModel
+
+        // AKKA fix: don't need SRID here
+        GeometryFactory builder = new GeometryFactory(pmodel); // GeometryFactory
+                                                               // crea objectes
+                                                               // geometrics de
+                                                               // gis
+
+        // AKKA fix: use GeometryBuilder.circle() to create the polygon
         GeometryBuilder gb = new GeometryBuilder(builder);
         final int SIDES = 32 + 16 * new Random().nextInt(4); // Random.
         Polygon polygon = gb.circle(lng, lat, radius, SIDES);
         return polygon;
     }
 
-    //AKKA fix: radius unit depends on SRID. Don't convert it
-    //	public static Circle shift(double x1, double y1, int metersPrivacy) {
-    //		return shift(x1, y1, (double)metersPrivacy/111220); //111220 metres per grau
-    //	}
+    // AKKA fix: radius unit depends on SRID. Don't convert it
+    // public static Circle shift(double x1, double y1, int metersPrivacy) {
+    // return shift(x1, y1, (double)metersPrivacy/111220); //111220 metres per
+    // grau
+    // }
 
     public static Circle shift(double x1, double y1, double privacy) {
         double theta = ThreadLocalRandom.current().nextDouble((360 - 0) + 1);
         double x2 = x1 + (Math.cos(theta) * privacy);
         double y2 = y1 + (Math.sin(theta) * privacy);
 
-        //System.out.println(theta);
-        //System.out.println("cos(theta) = "+Math.cos(Math.toRadians(theta)));
-        //System.out.println("sin(theta) = "+Math.sin(Math.toRadians(theta)) );
+        // System.out.println(theta);
+        // System.out.println("cos(theta) = "+Math.cos(Math.toRadians(theta)));
+        // System.out.println("sin(theta) = "+Math.sin(Math.toRadians(theta)) );
 
-        //System.out.println(eu.clarussecure.dataoperations.anonymization.Distances.distanciaHaversine(x1, y1, x2, y2));
+        // System.out.println(eu.clarussecure.dataoperations.anonymization.Distances.distanciaHaversine(x1,
+        // y1, x2, y2));
 
-        //System.out.println("max distance: "+x2+" "+y2);
+        // System.out.println("max distance: "+x2+" "+y2);
 
         double x = x1 + ((x2 - x1) * ThreadLocalRandom.current().nextDouble());
         double y = y1 + ((y2 - y1) * ThreadLocalRandom.current().nextDouble());
 
-        //System.out.println(y+", "+x); //prints in google maps style (latitude and longitude)
+        // System.out.println(y+", "+x); //prints in google maps style (latitude
+        // and longitude)
 
         return new Circle(x, y, privacy);
     }
@@ -798,8 +937,8 @@ public class Functions {
     public static void readProperties(Document document) {
         int numQuasis;
 
-        //URV fix: removed header, attribute_separator and record_separator
-        //URV fix: elements are retrieved by their name
+        // URV fix: removed header, attribute_separator and record_separator
+        // URV fix: elements are retrieved by their name
 
         Record.attrTypes = getAttributeTypes(document);
         for (String s : Record.attrTypes.values()) {
@@ -818,8 +957,9 @@ public class Functions {
             if (s.equalsIgnoreCase(Constants.coarsening)) {
                 Record.coarsening_type = getCoarseningType(document);
                 if (Record.coarsening_type.equalsIgnoreCase(Constants.shift)) {
-                    //AKKA fix: radius value depends on SRID. it could be a real
-                    //Record.radius = Integer.parseInt(getRadius(document));
+                    // AKKA fix: radius value depends on SRID. it could be a
+                    // real
+                    // Record.radius = Integer.parseInt(getRadius(document));
                     Record.radius = Double.parseDouble(getRadius(document));
                 }
                 if (Record.coarsening_type.equalsIgnoreCase(Constants.microaggregation)) {
@@ -827,8 +967,17 @@ public class Functions {
                 }
             }
         }
-        Record.listNames = getAtributeNames(document);
-        Record.listAttrTypes = getAtributeTypes(document);
+        // AKKA fix: replace unqualified attribute name by a generic qualified
+        // one (with asterisks).
+        // Moreover, save resolved attribute names and types in refListNames,
+        // refListNamePatterns and refListAttrTypes
+        List<String> attributeNames = getAtributeNames(document);
+        attributeNames = AttributeNamesUtilities.fullyQualified(attributeNames);
+        List<Pattern> attributePatterns = attributeNames.stream().map(AttributeNamesUtilities::escapeRegex)
+                .map(Pattern::compile).collect(Collectors.toList());
+        Record.refListNames = Record.listNames = (ArrayList<String>) attributeNames;
+        Record.refListNamePatterns = Record.listNamePatterns = (ArrayList<Pattern>) attributePatterns;
+        Record.refListAttrTypes = Record.listAttrTypes = getAtributeTypes(document);
         numQuasis = 0;
         for (String s : Record.listAttrTypes) {
             if (s.equals(Constants.quasiIdentifier)) {
@@ -839,8 +988,10 @@ public class Functions {
         if (Record.numQuasi == 0) {
             Record.attrTypes.put(Constants.quasiIdentifier, "null");
         }
-        Record.listDataTypes = getAttributeDataTypes(document);
-        Record.numAttr = Record.listAttrTypes.size();
+        // AKKA fix: save resolved data types and attribute number in
+        // refListDataTypes and refNumAttr
+        Record.refListDataTypes = Record.listDataTypes = getAttributeDataTypes(document);
+        Record.refNumAttr = Record.numAttr = Record.listAttrTypes.size();
     }
 
     private static HashMap<String, String> getAttributeTypes(Document document) {
@@ -850,7 +1001,7 @@ public class Functions {
         String type, protection;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -873,7 +1024,7 @@ public class Functions {
         String k = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -898,7 +1049,7 @@ public class Functions {
         String t = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -923,7 +1074,7 @@ public class Functions {
         String clouds = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -948,7 +1099,7 @@ public class Functions {
         String idKey = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -973,7 +1124,7 @@ public class Functions {
         String radius = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -998,7 +1149,7 @@ public class Functions {
         String type = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -1023,7 +1174,7 @@ public class Functions {
         String k = null;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attributeType);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -1048,7 +1199,7 @@ public class Functions {
         String name;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attribute);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -1069,7 +1220,7 @@ public class Functions {
         String attrType;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attribute);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -1090,7 +1241,7 @@ public class Functions {
         String attrType;
         NodeList nodeList;
 
-        //URV fix: elements are retrieved by their name
+        // URV fix: elements are retrieved by their name
         nodeList = document.getElementsByTagName(Constants.attribute);
 
         for (int i = 0; i < nodeList.getLength(); i++) {
@@ -1109,6 +1260,9 @@ public class Functions {
     }
 
     public static ArrayList<Record> createRecords(String data) {
+        // AKKA fix: log
+        LOGGER.trace("Loading records...");
+
         ArrayList<Record> records = new ArrayList<Record>();
         String recordsStr[];
         String strTemp[];
@@ -1127,11 +1281,15 @@ public class Functions {
             records.add(record);
         }
 
-        System.out.println("Records loaded: " + records.size());
+        // AKKA fix: log
+        LOGGER.debug("Records loaded: {}", records.size());
         return records;
     }
 
     public static ArrayList<Record> createRecords(String[][] data) {
+        // AKKA fix: log
+        LOGGER.trace("Loading records...");
+
         ArrayList<Record> records = new ArrayList<Record>();
         Record record = null;
         int id;
@@ -1146,11 +1304,15 @@ public class Functions {
             records.add(record);
         }
 
-        System.out.println("Records loaded: " + records.size());
+        // AKKA fix: log
+        LOGGER.debug("Records loaded: {}", records.size());
         return records;
     }
 
     public static String[][] createMatrixStringFromRecords(ArrayList<Record> records) {
+        // AKKA fix: log
+        LOGGER.trace("Converting {} records to String matrix", records.size());
+
         String data[][];
         Record record;
 
@@ -1160,11 +1322,15 @@ public class Functions {
             data[i] = record.toVectorString();
         }
 
-        System.out.println(data.length + " records converted to String matrix");
+        // AKKA fix: log
+        LOGGER.debug("{} records converted to String matrix", data.length);
         return data;
     }
 
     public static ArrayList<Record> readFile(String fileStr, String fileProperties) {
+        // AKKA fix: log
+        LOGGER.trace("Loading records...");
+
         ArrayList<Record> records = new ArrayList<Record>();
         FileReader2 file;
         String linea;
@@ -1188,7 +1354,8 @@ public class Functions {
             records.add(record);
         }
         file.closeFile();
-        System.out.println("Records loaded: " + records.size());
+        // AKKA fix: log
+        LOGGER.debug("Records loaded: {}", records.size());
         return records;
     }
 

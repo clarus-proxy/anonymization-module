@@ -1,11 +1,15 @@
 package eu.clarussecure.dataoperations.anonymization;
 
-import java.io.*;
+import java.io.BufferedWriter;
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.List;
+
+import org.w3c.dom.Document;
 
 import eu.clarussecure.dataoperations.DataOperation;
 import eu.clarussecure.dataoperations.DataOperationCommand;
-import org.w3c.dom.Document;
 
 public class Test {
 
@@ -29,60 +33,60 @@ public class Test {
         dataOri = datasetParser.parseDataset();
         dataAnom = interFace.post(attributes, dataOri);
 
-        //		xmlProperties = loadXmlFile("./datasets/propertiesNoOrder.xml");
-        //		document = Functions.readDocument(xmlProperties);
-        //		DataOperation interFace = new AnonymizeModule(document);
+        // xmlProperties = loadXmlFile("./datasets/propertiesNoOrder.xml");
+        // document = Functions.readDocument(xmlProperties);
+        // DataOperation interFace = new AnonymizeModule(document);
         //
-        //		file = new File("./datasets/data_clarus2.txt");
-        //		datasetParser = new DatasetParser(file , ",");
+        // file = new File("./datasets/data_clarus2.txt");
+        // datasetParser = new DatasetParser(file , ",");
         //
-        //		attributes = datasetParser.parseHeaders();
-        //		dataOri = datasetParser.parseDataset();
-        //		dataAnom = interFace.post(attributes, dataOri);
+        // attributes = datasetParser.parseHeaders();
+        // dataOri = datasetParser.parseDataset();
+        // dataAnom = interFace.post(attributes, dataOri);
 
-        //		xmlProperties = loadXmlFile("./datasets/properties2.xml");
-        //		document = Functions.readDocument(xmlProperties);
-        //		DataOperation interFace = new AnonymizeModule(document);
+        // xmlProperties = loadXmlFile("./datasets/properties2.xml");
+        // document = Functions.readDocument(xmlProperties);
+        // DataOperation interFace = new AnonymizeModule(document);
         //
-        //		file = new File("./datasets/data_clarus2.txt");
-        //		datasetParser = new DatasetParser(file, ",");
+        // file = new File("./datasets/data_clarus2.txt");
+        // datasetParser = new DatasetParser(file, ",");
         //
-        //		attributes = datasetParser.parseHeaders();
-        //		dataOri = datasetParser.parseDataset();
-        //		dataAnom = interFace.post(attributes, dataOri);
+        // attributes = datasetParser.parseHeaders();
+        // dataOri = datasetParser.parseDataset();
+        // dataAnom = interFace.post(attributes, dataOri);
 
-        //		xmlProperties = loadXmlFile("./datasets/properties4.xml");
-        //		document = Functions.readDocument(xmlProperties);
-        //		DataOperation interFace = new AnonymizeModule(document);
+        // xmlProperties = loadXmlFile("./datasets/properties4.xml");
+        // document = Functions.readDocument(xmlProperties);
+        // DataOperation interFace = new AnonymizeModule(document);
         //
-        //		file = new File("./datasets/boreholes2.txt");
-        //		datasetParser = new DatasetParser(file , ";");
+        // file = new File("./datasets/boreholes2.txt");
+        // datasetParser = new DatasetParser(file , ";");
         //
-        //		attributes = datasetParser.parseHeaders();
-        //		dataOri = datasetParser.parseDataset();
-        //		dataAnom = interFace.post(attributes, dataOri);
+        // attributes = datasetParser.parseHeaders();
+        // dataOri = datasetParser.parseDataset();
+        // dataAnom = interFace.post(attributes, dataOri);
 
-        //		xmlProperties = loadXmlFile("./datasets/properties5.xml");
-        //		document = Functions.readDocument(xmlProperties);
-        //		DataOperation interFace = new AnonymizeModule(document);
+        // xmlProperties = loadXmlFile("./datasets/properties5.xml");
+        // document = Functions.readDocument(xmlProperties);
+        // DataOperation interFace = new AnonymizeModule(document);
         //
-        //		file = new File("./datasets/boreholes2.txt");
-        //		datasetParser = new DatasetParser(file , ";");
+        // file = new File("./datasets/boreholes2.txt");
+        // datasetParser = new DatasetParser(file , ";");
         //
-        //		attributes = datasetParser.parseHeaders();
-        //		dataOri = datasetParser.parseDataset();
-        //		dataAnom = interFace.post(attributes, dataOri);
+        // attributes = datasetParser.parseHeaders();
+        // dataOri = datasetParser.parseDataset();
+        // dataAnom = interFace.post(attributes, dataOri);
 
-        //		xmlProperties = loadXmlFile("./datasets/properties4.xml");
-        //		document = Functions.readDocument(xmlProperties);
-        //		DataOperation interFace = new AnonymizeModule(document);
+        // xmlProperties = loadXmlFile("./datasets/properties4.xml");
+        // document = Functions.readDocument(xmlProperties);
+        // DataOperation interFace = new AnonymizeModule(document);
         //
-        //		file = new File("./datasets/boreholes2.txt");
-        //		datasetParser = new DatasetParser(file , ";");
+        // file = new File("./datasets/boreholes2.txt");
+        // datasetParser = new DatasetParser(file , ";");
         //
-        //		attributes = datasetParser.parseHeaders();
-        //		dataOri = datasetParser.getSingleRecord();
-        //		dataAnom = interFace.post(attributes, dataOri);
+        // attributes = datasetParser.parseHeaders();
+        // dataOri = datasetParser.getSingleRecord();
+        // dataAnom = interFace.post(attributes, dataOri);
     }
 
     public static byte[] loadXmlFile(String filePropertiesName) {

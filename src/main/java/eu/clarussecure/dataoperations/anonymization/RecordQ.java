@@ -28,7 +28,8 @@ public class RecordQ {
             attrType = Record.listAttrTypes.get(j);
             if (attrType.equalsIgnoreCase(Constants.quasiIdentifier)) {
                 dataType = Record.listDataTypes.get(j);
-                if (dataType.equalsIgnoreCase(Constants.date)) { //epoch time a fecha
+                if (dataType.equalsIgnoreCase(Constants.date)) { // epoch time a
+                                                                     // fecha
                     record.attrValues[j] = format1.format(new Date(Long.parseLong(this.attrValues[pos])));
                 } else {
                     record.attrValues[j] = this.attrValues[pos];

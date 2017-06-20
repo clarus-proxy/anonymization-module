@@ -29,7 +29,7 @@ public class Distances {
                     } else {
                         partial = 1.0;
                     }
-                    //partial /= typicalDev[i];
+                    // partial /= typicalDev[i];
                 }
                 partial += (partial1 * partial1);
             }

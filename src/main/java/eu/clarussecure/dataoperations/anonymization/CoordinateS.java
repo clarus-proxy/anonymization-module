@@ -4,7 +4,7 @@ public class CoordinateS {
     double latitude;
     double longitude;
     int id;
-    //AKKA fix: SRID
+    // AKKA fix: SRID
     int srid;
 
     public CoordinateS(double latitude, double longitude) {
@@ -17,7 +17,7 @@ public class CoordinateS {
         this.longitude = longitude;
     }
 
-    //AKKA fix: SRID
+    // AKKA fix: SRID
     public CoordinateS(double latitude, double longitude, int id, int srid) {
         this.latitude = latitude;
         this.longitude = longitude;
@@ -59,13 +59,13 @@ public class CoordinateS {
         x = this.latitude - lat2;
         y = (this.longitude - lon2) * Math.cos(lat2);
         dist = deglen * Math.sqrt(x * x + y * y);
-        dist *= 1000; //in meters
+        dist *= 1000; // in meters
         return dist;
     }
 
     @Override
     public String toString() {
-        //return "lat=" + latitude + ", lon=" + longitude;
+        // return "lat=" + latitude + ", lon=" + longitude;
         return latitude + "," + longitude;
     }
 }
