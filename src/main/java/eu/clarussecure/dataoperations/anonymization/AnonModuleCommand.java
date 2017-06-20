@@ -16,7 +16,7 @@ public class AnonModuleCommand extends DataOperationCommand {
         super.protectedAttributeNames = attributeNames;
         super.extraProtectedAttributeNames = null;
         super.extraBinaryContent = null;
-        super.mapping = new HashMap<String,String>();
+        super.mapping = new HashMap<String, String>();
         for (String attributeName : attributeNames) {
             mapping.put(attributeName, attributeName);
         }
