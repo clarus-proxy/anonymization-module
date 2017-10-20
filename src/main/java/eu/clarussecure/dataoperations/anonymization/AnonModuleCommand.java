@@ -1,9 +1,9 @@
 package eu.clarussecure.dataoperations.anonymization;
 
-import eu.clarussecure.dataoperations.DataOperationCommand;
-
 import java.util.HashMap;
 import java.util.Random;
+
+import eu.clarussecure.dataoperations.DataOperationCommand;
 
 /**
  * Created by Alberto Blanco on 25/01/2017.
@@ -16,7 +16,7 @@ public class AnonModuleCommand extends DataOperationCommand {
         super.protectedAttributeNames = attributeNames;
         super.extraProtectedAttributeNames = null;
         super.extraBinaryContent = null;
-        super.mapping = new HashMap<String,String>();
+        super.mapping = new HashMap<String, String>();
         for (String attributeName : attributeNames) {
             mapping.put(attributeName, attributeName);
         }
