@@ -6,6 +6,7 @@ public class Constants {
     final static public String splitting = "splitting";
     final static public String encryption = "encryption";
     final static public String coarsening = "coarsening";
+    final static public String suppression = "suppression";
     final static public String shift = "shift";
     final static public String microaggregation = "microaggregation";
     final static public String quasiIdentifier = "quasi_identifier";

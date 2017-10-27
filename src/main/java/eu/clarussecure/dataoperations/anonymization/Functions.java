@@ -1,24 +1,11 @@
 package eu.clarussecure.dataoperations.anonymization;
 
-import java.io.BufferedWriter;
-import java.io.File;
-import java.io.FileNotFoundException;
-import java.io.FileWriter;
-import java.io.IOException;
-import java.io.StringReader;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Random;
-import java.util.concurrent.ThreadLocalRandom;
-import java.util.regex.Pattern;
-import java.util.stream.Collectors;
-
-import javax.xml.parsers.DocumentBuilder;
-import javax.xml.parsers.DocumentBuilderFactory;
-import javax.xml.parsers.ParserConfigurationException;
-
+import com.vividsolutions.jts.geom.Geometry;
+import com.vividsolutions.jts.geom.GeometryFactory;
+import com.vividsolutions.jts.geom.Polygon;
+import com.vividsolutions.jts.geom.PrecisionModel;
+import com.vividsolutions.jts.io.*;
+import eu.clarussecure.dataoperations.AttributeNamesUtilities;
 import org.geotools.geometry.jts.GeometryBuilder;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -29,17 +16,14 @@ import org.w3c.dom.NodeList;
 import org.xml.sax.InputSource;
 import org.xml.sax.SAXException;
 
-import com.vividsolutions.jts.geom.Geometry;
-import com.vividsolutions.jts.geom.GeometryFactory;
-import com.vividsolutions.jts.geom.Polygon;
-import com.vividsolutions.jts.geom.PrecisionModel;
-import com.vividsolutions.jts.io.ParseException;
-import com.vividsolutions.jts.io.WKBReader;
-import com.vividsolutions.jts.io.WKBWriter;
-import com.vividsolutions.jts.io.WKTReader;
-import com.vividsolutions.jts.io.WKTWriter;
-
-import eu.clarussecure.dataoperations.AttributeNamesUtilities;
+import javax.xml.parsers.DocumentBuilder;
+import javax.xml.parsers.DocumentBuilderFactory;
+import javax.xml.parsers.ParserConfigurationException;
+import java.io.*;
+import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 public class Functions {
 
@@ -50,6 +34,11 @@ public class Functions {
         String[][] dataAnom = null;
 
         reOrderListsAccordingAttributeParameter(attributes);
+
+        // TODO: Attempt at solving suppression bug
+        if (Record.attrTypes.get(Constants.identifier).equalsIgnoreCase(Constants.suppression)) {
+            content = suppress(content);
+        }
 
         if (Record.attrTypes.get(Constants.quasiIdentifier).equalsIgnoreCase(Constants.kAnonymity)
                 && Record.attrTypes.get(Constants.confidential).equalsIgnoreCase(Constants.tCloseness)) {
@@ -521,6 +510,34 @@ public class Functions {
         LOGGER.debug("Coarsening done (radius = {})", radius);
 
         return dataAnom;
+    }
+
+    // TODO: Fix suppression bug
+    public static String[][] suppress(String[][] dataOri) {
+        ArrayList<Record> data;
+        ArrayList<Record> dataAnom;
+        String[][] dataAnomStr;
+
+        data = createRecords(dataOri);
+        dataAnom = suppression(data);
+        dataAnomStr = createMatrixStringFromRecords(dataAnom);
+
+        return dataAnomStr;
+    }
+
+    // TODO: fix suppression bug
+    public static ArrayList<Record> suppression(ArrayList<Record> dataOri) {
+
+        LOGGER.trace("Suppressing...");
+        for (int i = 0; i < Record.numAttr; i++) {
+            if (Record.listAttrTypes.get(i).equalsIgnoreCase(Constants.identifier)) {
+                for (Record r : dataOri) {
+                    r.attrValues[i] = "*****";
+                }
+            }
+        }
+
+        return dataOri;
     }
 
     /**
