@@ -36,9 +36,9 @@ public class RecordQ {
                 }
                 pos++;
             }
-            if (attrType.equalsIgnoreCase(Constants.identifier)) {
+            /*if (attrType.equalsIgnoreCase(Constants.identifier)) {
                 record.attrValues[j] = "*";
-            }
+            }*/
         }
         return record;
     }

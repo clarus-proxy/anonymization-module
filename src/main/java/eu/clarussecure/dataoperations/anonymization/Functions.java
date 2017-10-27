@@ -63,7 +63,7 @@ public class Functions {
             return dataAnom;
         }
 
-        return dataAnom;
+        return content;
     }
 
     private static void reOrderListsAccordingAttributeParameter(String[] attributes) {
@@ -532,7 +532,7 @@ public class Functions {
         for (int i = 0; i < Record.numAttr; i++) {
             if (Record.listAttrTypes.get(i).equalsIgnoreCase(Constants.identifier)) {
                 for (Record r : dataOri) {
-                    r.attrValues[i] = "*****";
+                    r.attrValues[i] = Constants.suppression_string;
                 }
             }
         }

@@ -1,15 +1,15 @@
 package eu.clarussecure.dataoperations.anonymization;
 
+import eu.clarussecure.dataoperations.DataOperation;
+import eu.clarussecure.dataoperations.DataOperationCommand;
+import org.w3c.dom.Document;
+
 import java.io.BufferedWriter;
 import java.io.File;
 import java.io.FileWriter;
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.List;
-
-import org.w3c.dom.Document;
-
-import eu.clarussecure.dataoperations.DataOperation;
-import eu.clarussecure.dataoperations.DataOperationCommand;
 
 public class Test {
 
@@ -22,16 +22,22 @@ public class Test {
         DatasetParser datasetParser;
         File file;
 
-        xmlProperties = loadXmlFile("./datasets/propertiesNoOrderSin_dis_id.xml");
+        xmlProperties = loadXmlFile("./datasets/properties.xml");
         document = Functions.readDocument(xmlProperties);
         DataOperation interFace = new AnonymizeModule(document);
 
-        file = new File("./datasets/data_clarus_peq.txt");
+        file = new File("./datasets/data_clarus2.txt");
         datasetParser = new DatasetParser(file, ",");
 
         attributes = datasetParser.parseHeaders();
         dataOri = datasetParser.parseDataset();
         dataAnom = interFace.post(attributes, dataOri);
+        for (DataOperationCommand a: dataAnom) {
+            for (String[] row : a.getProtectedContents()) {
+                System.out.println(Arrays.toString(row));
+            }
+
+        }
 
         // xmlProperties = loadXmlFile("./datasets/propertiesNoOrder.xml");
         // document = Functions.readDocument(xmlProperties);

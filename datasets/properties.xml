@@ -62,7 +62,7 @@
 		<attribute_types>
 			<attribute_type
 				type="identifier"
-				protection="supression">
+				protection="suppression">
 			</attribute_type>
 			<attribute_type
 				type="quasi_identifier"

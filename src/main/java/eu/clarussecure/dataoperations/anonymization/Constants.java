@@ -31,5 +31,6 @@ public class Constants {
     final static public String attributeType = "attribute_type";
     final static public String attribute = "attribute";
     final static public String non_confidential = "non_confidential";
+    final static public String suppression_string = "*****";
 
 }
